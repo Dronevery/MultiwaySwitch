@@ -27,6 +27,3 @@
 *.out
 *.app
 
-# custom
-client3.c
-server3.c

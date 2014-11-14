@@ -32,7 +32,8 @@ struct param
 pthread_mutex_t tot_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;    //just for printf when debug
 pthread_mutex_t switch_mutex = PTHREAD_MUTEX_INITIALIZER;   //for SwitchPort()
-pthread_mutex_t sock_mutex[3] = {//for asock[4]
+pthread_mutex_t sock_mutex[4] = {//for asock[4]
+    PTHREAD_MUTEX_INITIALIZER,
     PTHREAD_MUTEX_INITIALIZER,
     PTHREAD_MUTEX_INITIALIZER,
     PTHREAD_MUTEX_INITIALIZER
@@ -203,7 +204,9 @@ void * ForwardUDP(void *v)
         if(result <= 0)continue;
         if(FD_ISSET(asock[3].sock, &inputs))
         {
+            pthread_mutex_lock(&sock_mutex[3]);
             Recvfrom(&asock[3], &buff[1]);
+            pthread_mutex_unlock(&sock_mutex[3]);
 
             printf("!>>Get UDP from local port<<!\n");
 
@@ -224,7 +227,7 @@ void init_mutex()//initialize all mutex
     pthread_mutex_init(&print_mutex, NULL);//just for printf when debug
     pthread_mutex_init(&switch_mutex, NULL);//for SwitchPort()
     int pi;
-    for(pi = 0; pi < 3; pi++)
+    for(pi = 0; pi < 4; pi++)
     {
         pthread_mutex_init(&sock_mutex[pi], NULL);
     }
@@ -328,7 +331,9 @@ int wait_recv(int Port, char msg[], int WaitTime)// Wait UDP response for WaitTi
         pthread_mutex_unlock(&sock_mutex[Port]);
         if(buff[0] == '3')
         {
+            pthread_mutex_lock(&sock_mutex[3]);
             Sendto(&asock[3], &buff[1]);
+            pthread_mutex_unlock(&sock_mutex[3]);
             continue;
         }
         if((n > 0) && (strcmp(msg, buff) == 0)) 
