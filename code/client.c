@@ -39,6 +39,7 @@ const int port_priority[3] = {0, 1, 2}; //means: port0 has the highest priority 
 int netstatus[3];
 unsigned int tot;
 struct netflag Flags;
+
 int Socket[4];//sock0,1,2:net to server  sock3:localhost
 struct sockaddr_in SendAddr[4];
 struct sockaddr_in RecvAddr[4];
@@ -207,9 +208,10 @@ void * ForwardUDP(void *v)
             buff[0] = '3';
             printf("%s\n", buff);
 
-            pthread_mutex_lock(&sock_mutex[PortNow]);
-            Sendto(PortNow, buff);
-            pthread_mutex_unlock(&sock_mutex[PortNow]);
+            int PortNow_t = PortNow;
+            pthread_mutex_lock(&sock_mutex[PortNow_t]);
+            Sendto(PortNow_t, buff);
+            pthread_mutex_unlock(&sock_mutex[PortNow_t]);
         }
     }
     return 0;
@@ -344,7 +346,11 @@ int wait_recv(int PortId, char msg[], int WaitTime)// Wait UDP response for Wait
         pthread_mutex_unlock(&sock_mutex[PortId]);
         if(buff[0] == '3')
         {
+            printf("!!receive UDP data packet from server!: %s\n", buff);
             pthread_mutex_lock(&sock_mutex[3]);
+            SendAddr[3].sin_family = RecvAddr[3].sin_family;
+            SendAddr[3].sin_port = RecvAddr[3].sin_port;
+            SendAddr[3].sin_addr.s_addr = RecvAddr[3].sin_addr.s_addr;
             Sendto(3, &buff[1]);
             pthread_mutex_unlock(&sock_mutex[3]);
             continue;
