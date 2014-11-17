@@ -45,6 +45,7 @@ int main(int argc, char **argv)
     }
     printf("This is a UDP server, I will received message from client and reply with same message\n");
 
+    init_mutex();
 
     int pi;
     for(pi = 0; pi < 3; pi++)
@@ -52,12 +53,17 @@ int main(int argc, char **argv)
         init_sock_s(pi, argv[1+pi]);//init the Socket and addr
         SendAddr[pi].sin_port = 0;  //as a NULL flag means that addr has never been assigned
     }
+    init_sock_c(3, "127.0.0.1", argv[4]);
     //printf("Socket init....finish\n");
 
     srand(time(NULL));
 
     PortNow = 0;
     Maxtot = 0;
+
+    pthread_t pt_f;
+    pthread_create(&pt_f, NULL, ForwardUDP, NULL);
+
 
     fd_set allPortSet;
     fd_set inputs;
@@ -77,17 +83,30 @@ int main(int argc, char **argv)
         for(pi = 0; pi < 3; pi++)
         if(FD_ISSET(Socket[pi], &inputs))
         {
+            pthread_mutex_lock(&sock_mutex[pi]);
             Recvfrom(pi, buff);
+            pthread_mutex_unlock(&sock_mutex[pi]);
             printf("%s %u says: %s\n", inet_ntoa(RecvAddr[pi].sin_addr), ntohs(RecvAddr[pi].sin_port), buff);
             
             //SendAddr[pi] == RecvAddr[pi];
             if(CheckAddr(&SendAddr[pi], &RecvAddr[pi]) != 0) continue;   //check if the UDP packet come from legal address
 
-            //for debug, sleep to simulate delay
+            if(buff[0] == '3')// if the packet is a data packet, not a test packet.
+            {
+                printf("!!receive UDP data packet from client!: %s\n", buff);
+                pthread_mutex_lock(&sock_mutex[3]);
+                Sendto(3, &buff[1]);
+                pthread_mutex_unlock(&sock_mutex[3]);
+                continue;
+            }
+
+            //for debug, sleep to simulate net delay
             int WaitTime = rand()%400;
             usleep(WaitTime * 1000);
 
+            pthread_mutex_lock(&sock_mutex[pi]);
             Sendto(pi, buff);//send msg
+            pthread_mutex_unlock(&sock_mutex[pi]);
             printf("sent: %s\n", buff);
 
             int port, tot;

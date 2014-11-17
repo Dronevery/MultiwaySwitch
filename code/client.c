@@ -85,6 +85,7 @@ int main(int argc, char **argv)
 
     pthread_t pt_t[3], pt_s, pt_f;
     pthread_create(&pt_s, NULL, SwitchPort, NULL);
+    pthread_create(&pt_f, NULL, ForwardUDP, NULL);
     
     for(pi = 0; pi < 3; pi++)
     {
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
         struct param * para = make_param(pi);
         pthread_create(&pt_t[pi], NULL, TestPort, (void *)para);
     }
-    pthread_create(&pt_f, NULL, ForwardUDP, NULL);
+    
 
     for(pi = 0; pi < 3; pi++)
     {
