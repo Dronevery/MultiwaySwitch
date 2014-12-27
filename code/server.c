@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 {
     if (argc != 5)
     {
-        printf("Usage: %s port port port port\nThe 4th port is the local port\n", argv[0]);
+        printf("Usage: %s receivePort sendPort\n", argv[0]);
         exit(1);
     }
     printf("This is a UDP server, I will received message from client and reply with same message\n");

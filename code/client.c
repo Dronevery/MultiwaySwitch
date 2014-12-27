@@ -135,7 +135,7 @@ void * TestPort(void * v)
     {
         pthread_mutex_lock(&tot_mutex);
         tot++;
-        sprintf(msg, "%d%u", PortNow, tot);//prepare msg
+        sprintf(msg, "%d%d%u", PortNow, id, tot);//prepare msg
         pthread_mutex_unlock(&tot_mutex);
 
         pthread_mutex_lock(&sock_mutex[id]);
