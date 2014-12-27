@@ -1,0 +1,14 @@
+80
+10.0.0.5 6241 10.0.0.1
+10.10.0.1 6242 10.20.0.1
+10.10.1.1 6243 10.20.0.1
+20624
+
+
+
+
+[Destination Port]
+[Source Address1] [Source Port1] [Destination Address1]
+[Source Address2] [Source Port2] [Destination Address2]
+[Source Address3] [Source Port3] [Destination Address3]
+[Local Data Receiving Port]

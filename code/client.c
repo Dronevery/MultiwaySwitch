@@ -13,6 +13,7 @@
 #define ARRLENGTH 10
 #define MAXFAIL 3
 #define MINFAIL 2
+#define MAXARGC 12
 
 struct netflag
 {
@@ -34,6 +35,8 @@ pthread_mutex_t sock_mutex[4] = {//for asock[4]
     PTHREAD_MUTEX_INITIALIZER
 };
 
+int configArgc;
+char configArgv[MAXARGC][20];
 
 const int port_priority[3] = {0, 1, 2}; //means: port0 has the highest priority to be choosed, than port1,than port2 
 int netstatus[3];
@@ -45,10 +48,11 @@ struct sockaddr_in SendAddr[4];
 struct sockaddr_in RecvAddr[4];
 int PortNow;
 
+void LoadClientConfig(char fileName[]);
 void init_mutex();
 int init_netflag(struct netflag *a);
 int update_netflag(struct netflag *a, int flag);
-int init_sock_c(int PortId, char s_addr[], char s_port[]);
+int init_sock_c(int PortId, char c_addr[], char c_port[], char s_addr[], char s_port[]);
 int init_sock_s(int PortId,  char s_port[]);
 int Sendto(int PortId, char msg[]);
 int Recvfrom(int PortId, char msg[]);
@@ -62,13 +66,10 @@ struct param * make_param(int id);
 
 
 
-int main(int argc, char **argv)
+int main()
 {
-    if (argc != 6)
-    {
-        printf("Usage: %s ip port port port port\nThe 4th port is the local port\n", argv[0]);
-        exit(1);
-    }
+
+    LoadClientConfig("config_c.txt");
     printf("This is a UDP client\n");
 
     init_mutex();   //initialize all mutex
@@ -79,9 +80,9 @@ int main(int argc, char **argv)
     for(pi = 0; pi < 3; pi++)
     {
         netstatus[pi] = 1;
-        init_sock_c(pi, argv[1], argv[2+pi]);
+        init_sock_c(pi, configArgv[1+pi*3], configArgv[2+pi*3], configArgv[3+pi*3], configArgv[0]);
     }
-    init_sock_s(3, argv[5]);
+    init_sock_s(3, configArgv[10]);
 
     pthread_t pt_t[3], pt_s, pt_f;
     pthread_create(&pt_s, NULL, SwitchPort, NULL);
@@ -102,7 +103,26 @@ int main(int argc, char **argv)
     return 0;
 }
 
-
+void LoadClientConfig(char fileName[])
+{
+    printf("Loading config from file %s ...", fileName);
+    FILE *configFile;
+    if( (configFile = fopen(fileName, "r")) == NULL)
+    {
+        printf("Error:Config file does not exist\n");
+        exit(0);
+    }
+    char inputString[20];
+    configArgc = 0;
+    while(fscanf(configFile, "%s", inputString) > 0)
+    {
+        if(configArgc == MAXARGC) break;
+        strcpy(configArgv[configArgc], inputString);
+        configArgc++;
+    }
+    printf("finished\n");
+    //int i;for(i=0;i<configArgc;i++)printf("%s ", configArgv[i]);
+}
 void * TestPort(void * v)
 {
     struct param *para = v;
@@ -258,7 +278,7 @@ int update_netflag(struct netflag *a, int flag)
     return 0;
 }
 
-int init_sock_c(int PortId, char s_addr[], char s_port[])
+int init_sock_c(int PortId, char c_addr[], char c_port[], char s_addr[], char s_port[])
 {
 
     if((Socket[PortId] = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -266,6 +286,17 @@ int init_sock_c(int PortId, char s_addr[], char s_port[])
         perror("init_socket");
         exit(1);
     }
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(atoi(c_port));
+    addr.sin_addr.s_addr = inet_addr(c_addr);
+    
+    if(bind(Socket[PortId], (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        perror("init_socket_bind");
+        exit(1);
+    }
+
     SendAddr[PortId].sin_family = AF_INET;
     SendAddr[PortId].sin_port = htons(atoi(s_port));
     SendAddr[PortId].sin_addr.s_addr = inet_addr(s_addr);
