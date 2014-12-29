@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 {
     if (argc != 3)
     {
-        printf("Usage: %s receivePort sendPort\n", argv[0]);
+        printf("Usage: %s receivePort fowardtoPort\n", argv[0]);
         exit(1);
     }
     printf("This is a UDP server, I will received message from client and reply with same message\n");
@@ -45,7 +45,6 @@ int main(int argc, char **argv)
     pthread_t pt_f;
     pthread_create(&pt_f, NULL, ForwardUDP, NULL);
     fd_set inputs;
-
     char buff[BUFFLENGTH];
     while (1)
     {
@@ -66,11 +65,9 @@ int main(int argc, char **argv)
                 continue;
             }
             UpdateAddr(&SendAddr[pi], &RecvAddr[0]);//update destination address of this link
-
             if(buff[1] == '3')// if the packet is a data packet, not a test packet.
             {
                 printf("!!receive UDP data packet from client!: %s\n", buff);
-
                 SendToLocal(&buff[2], msglen-2);
                 continue;
             }
@@ -94,7 +91,6 @@ int main(int argc, char **argv)
                 }
             }
         }
-
     }
     return 0;
 }
@@ -102,7 +98,6 @@ int main(int argc, char **argv)
 void ChangeNet(int bestport)
 {
     PortNow = bestport;
-
     printf("!!!!!!!!!!!!!!!!!!!!!Control Port changed to port%d\n", PortNow);
 }
 
@@ -119,12 +114,9 @@ void * ForwardUDP(void *v)
         if(FD_ISSET(Socket[1], &inputs))
         {
             int msglen = Recvfrom(1, &buff[1]);
-
             printf("!>>Get UDP from local port<<!\n");
-
             buff[0] = '3';
             printf("%s\n", buff);
-
             int PortNow_t = PortNow;
             SendToClient(PortNow_t, buff, msglen+1);
         }

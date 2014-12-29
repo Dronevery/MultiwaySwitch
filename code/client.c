@@ -26,7 +26,6 @@ struct param
 };
 
 pthread_mutex_t tot_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;    //just for printf when debug
 pthread_mutex_t switch_mutex = PTHREAD_MUTEX_INITIALIZER;   //for SwitchPort()
 
 int configArgc;
@@ -48,7 +47,7 @@ int init_netflag(struct netflag *a);
 int update_netflag(struct netflag *a, int flag);
 int init_sock_c(int PortId, char c_addr[], char c_port[], char s_addr[], char s_port[]);
 int init_sock_s(int PortId,  char s_port[]);
-int Sendto(int PortId, char msg[]);
+int Sendto(int PortId, char msg[], int len);
 int Recvfrom(int PortId, char msg[]);
 int wait_recv(int PortId, char msg[], int WaitTime);
 void * TestPort(void * v);
@@ -131,15 +130,14 @@ void * TestPort(void * v)
         tot++;
         sprintf(msg, "%d%d%u", id, PortNow, tot);//prepare msg
         pthread_mutex_unlock(&tot_mutex);
-        Sendto(id, msg);//send msg
+        Sendto(id, msg, strlen(msg));//send msg
         //printf("sent: %s\n", msg);
 
         int flag = wait_recv(id, msg, 1000000);//wait 1s for response
 
         update_netflag(&Flags, flag);
-        pthread_mutex_lock(&print_mutex);
+
         printf("Port%d %s  Statue: %d/%d \n", id, (flag?("Success."):("Failed. ")), Flags.tot, ARRLENGTH);
-        pthread_mutex_unlock(&print_mutex);
 
         if(ARRLENGTH - Flags.tot >= MAXFAIL && netstatus[id] == 1)
         {
@@ -164,16 +162,15 @@ void * SwitchPort(void * v)
     while(1)
     {
         pthread_mutex_lock(&switch_mutex);
-        pthread_mutex_lock(&print_mutex);
+
         printf("!!!SwitchPort runs~  Netstatus: ");
         int i;
         for(i = 0; i < 3; i++)
             if(netstatus[i] == 0) printf("Closed.");
                 else printf("Good.  ");
         printf("\n");
-        pthread_mutex_unlock(&print_mutex);
 
-        int bestport = port_priority[2];// assume that the last priority port is most stable
+        int bestport = port_priority[0];
         for(i = 0; i < 3; i++)
         if(netstatus[port_priority[i]])
         {
@@ -194,9 +191,7 @@ void ChangeNet(int bestport)
     */
     pthread_mutex_unlock(&tot_mutex);
 
-    pthread_mutex_lock(&print_mutex);
     printf("!!!!!!!!!!!!!!!!!!!!!Control Port changed to port%d\n", PortNow);
-    pthread_mutex_unlock(&print_mutex);
 }
 
 void * ForwardUDP(void *v)
@@ -211,7 +206,7 @@ void * ForwardUDP(void *v)
         if(result <= 0)continue;
         if(FD_ISSET(Socket[3], &inputs))
         {
-            Recvfrom(3, &buff[2]);
+            int msglen = Recvfrom(3, &buff[2]);
 
 
             printf("!>>Get UDP from local port<<!\n");
@@ -220,7 +215,7 @@ void * ForwardUDP(void *v)
             buff[1] = '3';
             buff[0] = '0' + PortNow_t;
             printf("%s\n", buff);
-            Sendto(PortNow_t, buff);
+            Sendto(PortNow_t, buff, msglen + 2);
 
         }
     }
@@ -230,7 +225,6 @@ void * ForwardUDP(void *v)
 void init_mutex()//initialize all mutex
 {
     pthread_mutex_init(&tot_mutex, NULL);
-    pthread_mutex_init(&print_mutex, NULL);//just for printf when debug
     pthread_mutex_init(&switch_mutex, NULL);//for SwitchPort()
 }
 
@@ -312,10 +306,10 @@ int init_sock_s(int PortId, char s_port[])
     }
     return 0;
 }
-int Sendto(int PortId, char msg[]) // sendto for client
+int Sendto(int PortId, char msg[], int len) // sendto for client
 {
     int n;
-    n = sendto(Socket[PortId], msg, strlen(msg), 0, (struct sockaddr *)&(SendAddr[PortId]), sizeof(SendAddr[PortId]));
+    n = sendto(Socket[PortId], msg, len, 0, (struct sockaddr *)&(SendAddr[PortId]), sizeof(SendAddr[PortId]));
     if (n < 0)
     {
         perror("sendto");
@@ -363,7 +357,7 @@ int wait_recv(int PortId, char msg[], int WaitTime)// Wait UDP response for Wait
             SendAddr[3].sin_family = RecvAddr[3].sin_family;
             SendAddr[3].sin_port = RecvAddr[3].sin_port;
             SendAddr[3].sin_addr.s_addr = RecvAddr[3].sin_addr.s_addr;
-            Sendto(3, &buff[1]);
+            Sendto(3, &buff[1], n-1);
 
             continue;
         }
