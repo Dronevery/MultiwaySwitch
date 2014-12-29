@@ -28,12 +28,6 @@ struct param
 pthread_mutex_t tot_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t print_mutex = PTHREAD_MUTEX_INITIALIZER;    //just for printf when debug
 pthread_mutex_t switch_mutex = PTHREAD_MUTEX_INITIALIZER;   //for SwitchPort()
-pthread_mutex_t sock_mutex[4] = {//for asock[4]
-    PTHREAD_MUTEX_INITIALIZER,
-    PTHREAD_MUTEX_INITIALIZER,
-    PTHREAD_MUTEX_INITIALIZER,
-    PTHREAD_MUTEX_INITIALIZER
-};
 
 int configArgc;
 char configArgv[MAXARGC][20];
@@ -135,12 +129,9 @@ void * TestPort(void * v)
     {
         pthread_mutex_lock(&tot_mutex);
         tot++;
-        sprintf(msg, "%d%d%u", PortNow, id, tot);//prepare msg
+        sprintf(msg, "%d%d%u", id, PortNow, tot);//prepare msg
         pthread_mutex_unlock(&tot_mutex);
-
-        pthread_mutex_lock(&sock_mutex[id]);
         Sendto(id, msg);//send msg
-        pthread_mutex_unlock(&sock_mutex[id]);
         //printf("sent: %s\n", msg);
 
         int flag = wait_recv(id, msg, 1000000);//wait 1s for response
@@ -161,7 +152,7 @@ void * TestPort(void * v)
             pthread_mutex_unlock(&switch_mutex);//let SwitchPort runs~
         } 
         
-        usleep(100000);
+        usleep(500000);
     }
     
     return 0;
@@ -220,19 +211,17 @@ void * ForwardUDP(void *v)
         if(result <= 0)continue;
         if(FD_ISSET(Socket[3], &inputs))
         {
-            pthread_mutex_lock(&sock_mutex[3]);
-            Recvfrom(3, &buff[1]);
-            pthread_mutex_unlock(&sock_mutex[3]);
+            Recvfrom(3, &buff[2]);
+
 
             printf("!>>Get UDP from local port<<!\n");
 
-            buff[0] = '3';
-            printf("%s\n", buff);
-
             int PortNow_t = PortNow;
-            pthread_mutex_lock(&sock_mutex[PortNow_t]);
+            buff[1] = '3';
+            buff[0] = '0' + PortNow_t;
+            printf("%s\n", buff);
             Sendto(PortNow_t, buff);
-            pthread_mutex_unlock(&sock_mutex[PortNow_t]);
+
         }
     }
     return 0;
@@ -243,11 +232,6 @@ void init_mutex()//initialize all mutex
     pthread_mutex_init(&tot_mutex, NULL);
     pthread_mutex_init(&print_mutex, NULL);//just for printf when debug
     pthread_mutex_init(&switch_mutex, NULL);//for SwitchPort()
-    int pi;
-    for(pi = 0; pi < 4; pi++)
-    {
-        pthread_mutex_init(&sock_mutex[pi], NULL);
-    }
 }
 
 struct param * make_param(int id)
@@ -371,20 +355,16 @@ int wait_recv(int PortId, char msg[], int WaitTime)// Wait UDP response for Wait
     {
         int result = select(FD_SETSIZE, &inputs, NULL, NULL, &timeout);
         //printf("%d : %d : %d\n", result, (int)timeout.tv_sec, (int)timeout.tv_usec);
-        if(result <= 0)
-            return 0;
-        pthread_mutex_lock(&sock_mutex[PortId]);
+        if(result <= 0) return 0;
         int n = Recvfrom(PortId, buff);
-        pthread_mutex_unlock(&sock_mutex[PortId]);
         if(buff[0] == '3')
         {
             printf("!!receive UDP data packet from server!: %s\n", buff);
-            pthread_mutex_lock(&sock_mutex[3]);
             SendAddr[3].sin_family = RecvAddr[3].sin_family;
             SendAddr[3].sin_port = RecvAddr[3].sin_port;
             SendAddr[3].sin_addr.s_addr = RecvAddr[3].sin_addr.s_addr;
             Sendto(3, &buff[1]);
-            pthread_mutex_unlock(&sock_mutex[3]);
+
             continue;
         }
         if((n > 0) && (strcmp(msg, buff) == 0)) 
