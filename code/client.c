@@ -42,6 +42,7 @@ struct sockaddr_in RecvAddr[4];
 int PortNow;
 
 void LoadClientConfig(char fileName[]);
+void LoadIpVariable(char addr1[], char addr2[], char addr3[]);
 void init_mutex();
 int init_netflag(struct netflag *a);
 int update_netflag(struct netflag *a, int flag);
@@ -63,6 +64,7 @@ int main()
 {
 
     LoadClientConfig("config_c.txt");
+    LoadIpVariable(configArgv[1], configArgv[4], configArgv[7]);
     printf("This is a UDP client\n");
 
     init_mutex();   //initialize all mutex
@@ -116,6 +118,30 @@ void LoadClientConfig(char fileName[])
     printf("finished\n");
     //int i;for(i=0;i<configArgc;i++)printf("%s ", configArgv[i]);
 }
+void LoadIpVariable(char addr1[], char addr2[], char addr3[])
+{
+    extern char **environ;
+    int i;
+    for(i = 0; environ[i]; i++)
+    {
+        if(strstr(environ[i], "IP_WIFI") == environ[i])
+        {
+            printf("Load addr1 from IP_WIFI\n");
+            strcpy(addr1, environ[i]+strlen("IP_WIFI="));
+        }
+        if(strstr(environ[i], "IP_UNICOM") == environ[i])
+        {
+            printf("Load addr2 from IP_UNICOM\n");
+            strcpy(addr2, environ[i]+strlen("IP_UNICOM="));
+        }
+        if(strstr(environ[i], "IP_CMCC") == environ[i])
+        {
+            printf("Load addr3 from IP_CMCC\n");
+            strcpy(addr3, environ[i]+strlen("IP_CMCC="));
+        }
+    }
+}
+
 void * TestPort(void * v)
 {
     struct param *para = v;
