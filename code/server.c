@@ -73,8 +73,8 @@ int main(int argc, char **argv)
             }
 
             //for debug, sleep to simulate net delay
-            int WaitTime = rand()%400;
-            usleep(WaitTime * 1000);
+            //int WaitTime = rand()%400;
+            //usleep(WaitTime * 1000);
 
             SendToClient(pi, buff, msglen);//send msg
             printf("sent: %s\n", buff);
