@@ -380,7 +380,7 @@ int wait_recv(int PortId, char msg[], int WaitTime)// Wait UDP response for Wait
         int n = Recvfrom(PortId, buff);
         if(buff[0] == '3')
         {
-            printf("!!receive UDP data packet from server!: %s\n", buff);
+            printf("!!receive UDP data packet from server!: \n");
             SendAddr[3].sin_family = RecvAddr[3].sin_family;
             SendAddr[3].sin_port = RecvAddr[3].sin_port;
             SendAddr[3].sin_addr.s_addr = RecvAddr[3].sin_addr.s_addr;
