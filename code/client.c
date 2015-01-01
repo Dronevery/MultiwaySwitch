@@ -51,6 +51,7 @@ int init_sock_s(int PortId,  char s_port[]);
 int Sendto(int PortId, char msg[], int len);
 int Recvfrom(int PortId, char msg[]);
 int wait_recv(int PortId, char msg[], int WaitTime);
+void wait_recv_data(int PortId, int WaitTime);
 void * TestPort(void * v);
 void * SwitchPort(void * v);
 void * ForwardUDP(void * v);
@@ -175,7 +176,7 @@ void * TestPort(void * v)
             netstatus[id] = 1;//good
             pthread_mutex_unlock(&switch_mutex);//let SwitchPort runs~
         } 
-        
+        if(flag) wait_recv_data(id, 100000);
         //usleep(500000);
     }
     
@@ -392,4 +393,28 @@ int wait_recv(int PortId, char msg[], int WaitTime)// Wait UDP response for Wait
     }
     return 0;
 }
-
+void wait_recv_data(int PortId, int WaitTime)// Wait UDP data package for WaitTime usec
+{
+    static char buff[BUFFLENGTH];
+    fd_set inputs;
+    struct timeval timeout;
+    FD_ZERO(&inputs);
+    FD_SET(Socket[PortId], &inputs);
+    timeout.tv_sec = WaitTime / 1000000;
+    timeout.tv_usec = WaitTime % 1000000;
+    while(timeout.tv_usec > 0 || timeout.tv_sec > 0)
+    {
+        int result = select(FD_SETSIZE, &inputs, NULL, NULL, &timeout);
+        //printf("%d : %d : %d\n", result, (int)timeout.tv_sec, (int)timeout.tv_usec);
+        if(result <= 0) return ;
+        int n = Recvfrom(PortId, buff);
+        if(buff[0] == '3')
+        {
+            printf("!!receive UDP data packet from server!: %s\n", buff);
+            SendAddr[3].sin_family = RecvAddr[3].sin_family;
+            SendAddr[3].sin_port = RecvAddr[3].sin_port;
+            SendAddr[3].sin_addr.s_addr = RecvAddr[3].sin_addr.s_addr;
+            Sendto(3, &buff[1], n-1);
+        }
+    }
+}
