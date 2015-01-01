@@ -67,7 +67,7 @@ int main(int argc, char **argv)
             UpdateAddr(&SendAddr[pi], &RecvAddr[0]);//update destination address of this link
             if(buff[1] == '3')// if the packet is a data packet, not a test packet.
             {
-                printf("!!receive UDP data packet from client!: %s\n", buff);
+                printf("!!receive UDP data packet from client!: \n");
                 SendToLocal(&buff[2], msglen-2);
                 continue;
             }

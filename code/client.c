@@ -241,7 +241,7 @@ void * ForwardUDP(void *v)
             int PortNow_t = PortNow;
             buff[1] = '3';
             buff[0] = '0' + PortNow_t;
-            printf("%s\n", buff);
+            //printf("%s\n", buff);
             Sendto(PortNow_t, buff, msglen + 2);
 
         }
@@ -410,7 +410,7 @@ void wait_recv_data(int PortId, int WaitTime)// Wait UDP data package for WaitTi
         int n = Recvfrom(PortId, buff);
         if(buff[0] == '3')
         {
-            printf("!!receive UDP data packet from server!: %s\n", buff);
+            printf("!!receive UDP data packet from server!: \n");
             SendAddr[3].sin_family = RecvAddr[3].sin_family;
             SendAddr[3].sin_port = RecvAddr[3].sin_port;
             SendAddr[3].sin_addr.s_addr = RecvAddr[3].sin_addr.s_addr;
