@@ -176,7 +176,7 @@ void * TestPort(void * v)
             pthread_mutex_unlock(&switch_mutex);//let SwitchPort runs~
         } 
         
-        usleep(500000);
+        //usleep(500000);
     }
     
     return 0;
