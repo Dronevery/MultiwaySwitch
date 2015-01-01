@@ -116,7 +116,7 @@ void * ForwardUDP(void *v)
             int msglen = Recvfrom(1, &buff[1]);
             printf("!>>Get UDP from local port<<!\n");
             buff[0] = '3';
-            printf("%s\n", buff);
+            //printf("%s\n", buff);
             int PortNow_t = PortNow;
             SendToClient(PortNow_t, buff, msglen+1);
         }
