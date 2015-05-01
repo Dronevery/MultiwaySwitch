@@ -81,11 +81,13 @@ struct param *make_param(int id);
 
 
 int main(int argc, char **argv) {
+    ClientConfig config;
     if (argc != 2) {
-        printf("Usage: %s {ConfigFileName}", argv[0]);
-        exit(1);
-    }
-    ClientConfig config = loadClient(argv[1]);
+        //printf("Usage: %s {ConfigFileName}", argv[0]);
+        //exit(1);
+        printf("Read config file from default path...\n");
+        config = loadClient("/etc/multiswitch/client.ini");
+    } else config = loadClient(argv[1]);
     LinkNum = config.linkCount;
     //LoadClientConfig("config_c.txt");
     LoadIpVariable(&config);
@@ -220,7 +222,6 @@ void *SwitchLink(void *v) {
             }
         if (MaxPriority > link_priority[LinkNow]) ChangeNet(bestlink);
     }
-    return nullptr;
 }
 
 void ChangeNet(int bestlink) {

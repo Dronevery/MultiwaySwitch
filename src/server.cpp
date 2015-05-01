@@ -44,11 +44,13 @@ void ChangeNet(int LinkNow_c);
 
 
 int main(int argc, char **argv) {
+    ServerConfig config;
     if (argc != 2) {
-        printf("Usage: %s {ConfigFileName}", argv[0]);
-        exit(1);
-    }
-    ServerConfig config = loadServer(argv[1]);
+        //printf("Usage: %s {ConfigFileName}", argv[0]);
+        //exit(1);
+        printf("Read config file from default path...\n");
+        config = loadServer("/etc/multiswitch/server.ini");
+    } else config = loadServer(argv[1]);
     printf("This is a UDP server, I will received message from client and reply with same message\n");
     LinkNum = config.linkCount;
     init_memory();
