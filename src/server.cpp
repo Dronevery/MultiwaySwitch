@@ -160,7 +160,7 @@ int init_sock_s(int LinkID, int s_port) {
     addr.sin_port = htons(s_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(Socket[LinkID], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (::bind(Socket[LinkID], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("init_socket_bind");
         exit(1);
     }

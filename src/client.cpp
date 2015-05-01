@@ -2,7 +2,7 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <netinet/in.h>
-//#include <netinet/udp.h>
+#include <netinet/udp.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -301,7 +301,7 @@ int init_sock_c(int LinkId, const char c_addr[], int c_port, const char s_addr[]
     addr.sin_port = htons(c_port);
     addr.sin_addr.s_addr = inet_addr(c_addr);
 
-    if (bind(Socket[LinkId], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (::bind(Socket[LinkId], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("init_socket_bind");
         exit(1);
     }
@@ -328,7 +328,7 @@ int init_sock_s(int LinkId, int s_port) {
     addr.sin_port = htons(s_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(Socket[LinkId], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (::bind(Socket[LinkId], (struct sockaddr *) &addr, sizeof(addr)) == -1) {
         perror("init_socket_bind");
         exit(1);
     }
