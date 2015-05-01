@@ -41,7 +41,7 @@ struct sockaddr_in SendAddr[4];
 struct sockaddr_in RecvAddr[4];
 int PortNow;
 
-void LoadClientConfig(char fileName[]);
+void LoadClientConfig(const char fileName[]);
 void LoadIpVariable(char addr1[], char addr2[], char addr3[]);
 void init_mutex();
 int init_netflag(struct netflag *a);
@@ -99,7 +99,7 @@ int main()
     return 0;
 }
 
-void LoadClientConfig(char fileName[])
+void LoadClientConfig(const char fileName[])
 {
     printf("Loading config from file %s ...", fileName);
     FILE *configFile;
@@ -145,7 +145,7 @@ void LoadIpVariable(char addr1[], char addr2[], char addr3[])
 
 void * TestPort(void * v)
 {
-    struct param *para = v;
+    struct param *para = (param *)v;
     int id = para->id;
     struct netflag Flags;
     init_netflag(&Flags);
@@ -257,7 +257,7 @@ void init_mutex()//initialize all mutex
 
 struct param * make_param(int id)
 {
-    struct param *a = malloc(sizeof(struct param));
+    struct param *a = (param *)malloc(sizeof(struct param));
     a->id = id;
     return a;
 }
@@ -277,7 +277,7 @@ int init_netflag(struct netflag *a)
 int update_netflag(struct netflag *a, int flag)
 {
     a->tot -= a->arr[a->p];
-    a->arr[a->p] = flag && 1;
+    a->arr[a->p] = flag != 0;
     a->tot += a->arr[a->p];
     a->p = (a->p + 1) % ARRLENGTH;
     return 0;

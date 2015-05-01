@@ -19,7 +19,7 @@ struct sockaddr_in SendAddr[4];//0,1,2:to client; 3:to local
 struct sockaddr_in RecvAddr[2];
 
 //void init_mutex();
-int init_sock_local(char s_addr[], char s_port[]);
+int init_sock_local(const char s_addr[], char s_port[]);
 int init_sock_s(int PortId,  char s_port[]);
 int SendToClient(int AddrId, char msg[], int len);
 int SendToLocal(char msg[], int len);
@@ -124,7 +124,7 @@ void * ForwardUDP(void *v)
     return 0;
 }
 
-int init_sock_local(char s_addr[], char s_port[])
+int init_sock_local(const char s_addr[], char s_port[])
 {
     if((Socket[1] = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
