@@ -14,11 +14,14 @@ ServerConfig loadServer(const char configFile[])
     config.receivePort = (int)reader.GetInteger("common","ReceivePort",10624);
     config.localForwardPort = (int)reader.GetInteger("common","LocalForwardPort",20624);
     config.linkCount = (int)reader.GetInteger("common","LinkCount",-1);
-
+    if (config.linkCount == -1)
+    {
+        cerr << "Can't read LinkCount\n";
+        exit(2);
+    }
     return config;
 
 }
-
 ClientConfig loadClient(const char configFile[]){
     INIReader reader(configFile);
     ClientConfig config;

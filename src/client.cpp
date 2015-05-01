@@ -2,7 +2,7 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <netinet/in.h>
-#include <netinet/udp.h>
+//#include <netinet/udp.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,7 +14,7 @@
 #define ARRLENGTH 10
 #define MAXFAIL 3
 #define MINFAIL 2
-#define MAXARGC 12
+//#define MAXARGC 12
 
 struct netflag {
     int arr[ARRLENGTH];
@@ -28,14 +28,13 @@ pthread_mutex_t tot_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t switch_mutex = PTHREAD_MUTEX_INITIALIZER;   //for SwitchLink()
 
 int LinkNum;        //number of Links
-int configArgc;
-char configArgv[MAXARGC][20];
+//int configArgc;
+//char configArgv[MAXARGC][20];
 
 int *link_priority;
 //int netstatus[3];
 int *netstatus;
 unsigned int tot;
-struct netflag Flags;
 
 //int Socket[4];
 int *Socket;
@@ -46,9 +45,9 @@ struct sockaddr_in *RecvAddr;
 //struct sockaddr_in RecvAddr[4];
 int LinkNow;
 
-void LoadClientConfig(const char fileName[]);
+//void LoadClientConfig(const char fileName[]);
 
-void LoadIpVariable(char addr1[], char addr2[], char addr3[]);
+void LoadIpVariable(ClientConfig *config);
 
 void init_mutex();
 
@@ -58,7 +57,7 @@ int init_netflag(struct netflag *a);
 
 int update_netflag(struct netflag *a, int flag);
 
-int init_sock_c(int LinkId, char c_addr[], char c_port[], char s_addr[], char s_port[]);
+int init_sock_c(int LinkId, const char c_addr[], int c_port, const char s_addr[], int s_port);
 
 int init_sock_s(int LinkId, char s_port[]);
 
@@ -81,10 +80,14 @@ void ChangeNet(int bestlink);
 struct param *make_param(int id);
 
 
-int main() {
-
-    LoadClientConfig("config_c.txt");
-    LoadIpVariable(configArgv[1], configArgv[4], configArgv[7]);
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        printf("Usage: %s {ConfigFileName}", argv[0]);
+        exit(1);
+    }
+    ClientConfig config = loadClient(argv[1]);
+    //LoadClientConfig("config_c.txt");
+    LoadIpVariable(&config);
     printf("This is a UDP client\n");
     
     init_memory();
@@ -94,12 +97,12 @@ int main() {
     LinkNow = 0;
     for (pi = 0; pi < LinkNum; pi++) {
         netstatus[pi] = 1;
-        init_sock_c(pi, configArgv[1 + pi * 3], configArgv[2 + pi * 3], configArgv[3 + pi * 3], configArgv[0]);
+        link_priority[pi] = config.links[pi].priority;
+        init_sock_c(pi, config.links[pi].sourceAddress.c_str(), config.links[pi].sourcePort, config.links[pi].destinationAddress.c_str(), config.destinationPort);
     }
-    init_sock_s(LinkNum, configArgv[10]);
-
+    init_sock_s(LinkNum, config.localForwardPort);
     pthread_t *pt_t;
-    pt_t = (pthread_t *)calloc(LinkNum, sizeof(pthread_t));
+    pt_t = (pthread_t *)calloc((size_t)LinkNum, sizeof(pthread_t));
     pthread_t pt_s, pt_f;
     pthread_create(&pt_s, NULL, SwitchLink, NULL);
     pthread_create(&pt_f, NULL, ForwardUDP, NULL);
@@ -117,16 +120,15 @@ int main() {
     return 0;
 }
 
-void init_memory()
-{
-    link_priority = (int *)calloc(LinkNum, sizeof(int));
-    netstatus = (int *)calloc(LinkNum, sizeof(int));
-    Socket = (int *)calloc(LinkNum + 1, sizeof(int));
-    SendAddr = (struct sockaddr_in *)calloc(LinkNum + 1, sizeof(struct sockaddr_in));
-    RecvAddr = (struct sockaddr_in *)calloc(LinkNum + 1, sizeof(struct sockaddr_in));
+void init_memory(){
+    link_priority = (int *)calloc((size_t)LinkNum, sizeof(int));
+    netstatus = (int *)calloc((size_t)LinkNum, sizeof(int));
+    Socket = (int *)calloc((size_t)LinkNum + 1, sizeof(int));
+    SendAddr = (struct sockaddr_in *)calloc((size_t)LinkNum + 1, sizeof(struct sockaddr_in));
+    RecvAddr = (struct sockaddr_in *)calloc((size_t)LinkNum + 1, sizeof(struct sockaddr_in));
 }
 
-void LoadClientConfig(const char fileName[]) {
+/*void LoadClientConfig(const char fileName[]) {
     printf("Loading config from file %s ...", fileName);
     FILE *configFile;
     if ((configFile = fopen(fileName, "r")) == NULL) {
@@ -142,23 +144,21 @@ void LoadClientConfig(const char fileName[]) {
     }
     printf("finished\n");
     //int i;for(i=0;i<configArgc;i++)printf("%s ", configArgv[i]);
-}
+}*/
 
-void LoadIpVariable(char addr1[], char addr2[], char addr3[]) {
+void LoadIpVariable(ClientConfig *config) {
     extern char **environ;
-    int i;
+    int i, j;
     for (i = 0; environ[i]; i++) {
-        if (strstr(environ[i], "IP_WIFI") == environ[i]) {
-            printf("Load addr1 from IP_WIFI\n");
-            strcpy(addr1, environ[i] + strlen("IP_WIFI="));
-        }
-        if (strstr(environ[i], "IP_UNICOM") == environ[i]) {
-            printf("Load addr2 from IP_UNICOM\n");
-            strcpy(addr2, environ[i] + strlen("IP_UNICOM="));
-        }
-        if (strstr(environ[i], "IP_CMCC") == environ[i]) {
-            printf("Load addr3 from IP_CMCC\n");
-            strcpy(addr3, environ[i] + strlen("IP_CMCC="));
+        for (j = 0; j < LinkNum ;j++){
+            char VarName[20];
+            sprintf(VarName, "IP_link%d", j);
+            if (strstr(environ[i], VarName) == environ[i]) {
+                printf("Load addr1 from %s\n", VarName);
+                char IPAddr[20];
+                strcpy(IPAddr, environ[i] + strlen(VarName));
+                config->links[j].sourceAddress = IPAddr;
+            }
         }
     }
 }
@@ -219,6 +219,7 @@ void *SwitchLink(void *v) {
             }
         if (MaxPriority > link_priority[LinkNow]) ChangeNet(bestlink);
     }
+    return nullptr;
 }
 
 void ChangeNet(int bestlink) {
@@ -255,7 +256,6 @@ void *ForwardUDP(void *v) {
 
         }
     }
-    return 0;
 }
 
 void init_mutex()//initialize all mutex
@@ -288,7 +288,7 @@ int update_netflag(struct netflag *a, int flag) {
     return 0;
 }
 
-int init_sock_c(int LinkId, char c_addr[], char c_port[], char s_addr[], char s_port[]) {
+int init_sock_c(int LinkId, const char c_addr[], int c_port, const char s_addr[], int s_port){
 
     if ((Socket[LinkId] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("init_socket");
@@ -296,7 +296,7 @@ int init_sock_c(int LinkId, char c_addr[], char c_port[], char s_addr[], char s_
     }
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(c_port));
+    addr.sin_port = htons(c_port);
     addr.sin_addr.s_addr = inet_addr(c_addr);
 
     if (bind(Socket[LinkId], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -305,7 +305,7 @@ int init_sock_c(int LinkId, char c_addr[], char c_port[], char s_addr[], char s_
     }
 
     SendAddr[LinkId].sin_family = AF_INET;
-    SendAddr[LinkId].sin_port = htons(atoi(s_port));
+    SendAddr[LinkId].sin_port = htons(s_port);
     SendAddr[LinkId].sin_addr.s_addr = inet_addr(s_addr);
     if (SendAddr[LinkId].sin_addr.s_addr == INADDR_NONE) {
         printf("Incorrect ip address!\n");
@@ -315,7 +315,7 @@ int init_sock_c(int LinkId, char c_addr[], char c_port[], char s_addr[], char s_
     return 0;
 }
 
-int init_sock_s(int LinkId, char s_port[]) {
+int init_sock_s(int LinkId, int s_port) {
 
     if ((Socket[LinkId] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("init_socket");
@@ -323,7 +323,7 @@ int init_sock_s(int LinkId, char s_port[]) {
     }
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(s_port));
+    addr.sin_port = htons(s_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(Socket[LinkId], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -336,7 +336,7 @@ int init_sock_s(int LinkId, char s_port[]) {
 int Sendto(int LinkId, char msg[], int len) // sendto for client
 {
     int n;
-    n = (int) sendto(Socket[LinkId], msg, len, 0, (struct sockaddr *) &(SendAddr[LinkId]), sizeof(SendAddr[LinkId]));
+    n = (int) sendto(Socket[LinkId], msg, (size_t)len, 0, (struct sockaddr *) &(SendAddr[LinkId]), sizeof(SendAddr[LinkId]));
     if (n < 0) {
         perror("sendto");
         //close(Socket[LinkId]);

@@ -104,8 +104,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void init_memory()
-{
+void init_memory(){
     SendAddr = (struct sockaddr_in *)calloc(LinkNum + 1, sizeof(struct sockaddr_in));
 }
 void ChangeNet(int LinkNow_c) {
