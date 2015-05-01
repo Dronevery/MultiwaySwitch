@@ -28,12 +28,11 @@ Please edit:
 
 ### for client
 
-	multiswitchclient
+	multiswitchclient [client-config-file.ini]
 	
 	
 ### for server
 
-	multiswitchserver
+	multiswitchserver [server-config-file.ini]
 	
-	
-	
+***you can assign a config file, or program will use the default one, which located in /etc/multiswitch/{client,server}.ini***
