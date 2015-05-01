@@ -41,7 +41,7 @@ ClientConfig loadClient(const char configFile[]){
         config.links[i].sourceAddress = reader.Get(string("link")+i,"SourceAddress","0.0.0.0");
         config.links[i].destinationAddress = reader.Get(string("link")+i,"DestinationAddress","127.0.0.1");
         config.links[i].sourcePort = (int)reader.GetInteger(string("link")+i,"SourcePort",6241);
-        config.links[i].priority = (int)reader.GetInteger(config.links[i].sourcePort = (int)reader.GetInteger(string("link")+i,"Priority",0);
+        config.links[i].priority = (int) reader.GetInteger(string("link") + i, "Priority", 0);
     }
     return config;
 
