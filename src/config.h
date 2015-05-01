@@ -5,8 +5,12 @@
 
 using namespace std;
 
-ServerConfig loadServer(const char configFile[]);
-ClientConfig loadClient(const char configFile[]);
+struct ClientLink{
+    string sourceAddress;
+    int sourcePort;
+    string destinationAddress;
+    int priority;
+};
 
 struct ClientConfig{
     int destinationPort;
@@ -15,15 +19,14 @@ struct ClientConfig{
     vector<ClientLink> links;
 };
 
-struct ClientLink{
-    string sourceAddress;
-    int sourcePort;
-    string destinationAddress;
-    int priority;
-};
+
 
 struct ServerConfig{
     int receivePort;
     int localForwardPort;
     int linkCount;
 };
+
+
+ServerConfig loadServer(const char configFile[]);
+ClientConfig loadClient(const char configFile[]);

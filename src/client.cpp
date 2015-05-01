@@ -59,7 +59,7 @@ int update_netflag(struct netflag *a, int flag);
 
 int init_sock_c(int LinkId, const char c_addr[], int c_port, const char s_addr[], int s_port);
 
-int init_sock_s(int LinkId, char s_port[]);
+int init_sock_s(int LinkId, int s_port);
 
 int Sendto(int LinkId, char msg[], int len);
 
@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
     ClientConfig config = loadClient(argv[1]);
+    LinkNum = config.linkCount;
     //LoadClientConfig("config_c.txt");
     LoadIpVariable(&config);
     printf("This is a UDP client\n");

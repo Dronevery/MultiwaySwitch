@@ -2,9 +2,9 @@
 #include <sys/socket.h>
 #include <pthread.h>
 #include <netinet/in.h>
-#include <netinet/udp.h>
+//#include <netinet/udp.h>
 #include <stdio.h>
-#include <string.h>
+//#include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
@@ -25,9 +25,9 @@ struct sockaddr_in RecvAddr[2];
 
 //void init_mutex();
 void init_memory();
-int init_sock_local(const char s_addr[], char s_port[]);
+int init_sock_local(const char s_addr[], int s_port);
 
-int init_sock_s(int LinkID, char s_port[]);
+int init_sock_s(int LinkID, int s_port);
 
 int SendToClient(int AddrId, char msg[], int len);
 
@@ -44,17 +44,18 @@ void ChangeNet(int LinkNow_c);
 
 
 int main(int argc, char **argv) {
-    if (argc != 3) {
-        printf("Usage: %s receivePort fowardtoPort\n", argv[0]);
+    if (argc != 2) {
+        printf("Usage: %s {ConfigFileName}", argv[0]);
         exit(1);
     }
+    ServerConfig config = loadServer(argv[1]);
     printf("This is a UDP server, I will received message from client and reply with same message\n");
-    LinkNum = 3;
+    LinkNum = config.linkCount;
     init_memory();
-    init_sock_s(0, argv[1]);//init the Socket and addr
-    init_sock_local("127.0.0.1", argv[2]);
+    init_sock_s(0, config.receivePort);//init the Socket and addr
+    init_sock_local("127.0.0.1", config.localForwardPort);
     //printf("Socket init....finish\n");
-    srand(time(NULL));
+    //srand(time(NULL));
     LinkNow = 0;
     Maxtot = 0;
     pthread_t pt_f;
@@ -72,7 +73,7 @@ int main(int argc, char **argv) {
             int pi, LinkNow_c;
             pi = buff[0] - '0';
             LinkNow_c = buff[1] - '0';
-            if (pi < 0 || pi > LinkNum-1 || LinkNow_c < 0 || LinkNow_c > LinkNum) {
+            if (pi < 0 || pi > LinkNum - 1 || LinkNow_c < 0 || LinkNow_c > LinkNum) {
                 printf("Invalid package.\n");
                 continue;
             }
@@ -101,11 +102,10 @@ int main(int argc, char **argv) {
             }
         }
     }
-    return 0;
 }
 
 void init_memory(){
-    SendAddr = (struct sockaddr_in *)calloc(LinkNum + 1, sizeof(struct sockaddr_in));
+    SendAddr = (struct sockaddr_in *)calloc((size_t)LinkNum + 1, sizeof(struct sockaddr_in));
 }
 void ChangeNet(int LinkNow_c) {
     LinkNow = LinkNow_c;
@@ -129,16 +129,15 @@ void *ForwardUDP(void *v) {
             SendToClient(LinkNow_t, buff, msglen + 1);
         }
     }
-    return 0;
 }
 
-int init_sock_local(const char s_addr[], char s_port[]) {
+int init_sock_local(const char s_addr[], int s_port) {
     if ((Socket[1] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("init_socket");
         exit(1);
     }
     SendAddr[LinkNum].sin_family = AF_INET;
-    SendAddr[LinkNum].sin_port = htons(atoi(s_port));
+    SendAddr[LinkNum].sin_port = htons(s_port);
     SendAddr[LinkNum].sin_addr.s_addr = inet_addr(s_addr);
     if (SendAddr[LinkNum].sin_addr.s_addr == INADDR_NONE) {
         printf("Incorrect ip address!\n");
@@ -148,7 +147,7 @@ int init_sock_local(const char s_addr[], char s_port[]) {
     return 0;
 }
 
-int init_sock_s(int LinkID, char s_port[]) {
+int init_sock_s(int LinkID, int s_port) {
 
     if ((Socket[LinkID] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("init_socket");
@@ -156,7 +155,7 @@ int init_sock_s(int LinkID, char s_port[]) {
     }
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(s_port));
+    addr.sin_port = htons(s_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(Socket[LinkID], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
