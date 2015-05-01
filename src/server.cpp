@@ -14,30 +14,34 @@
 #define BUFFLENGTH 65536
 #define MAXMINUS 1000
 
-int PortNow;
+int LinkNum;
+int LinkNow;
 long long Maxtot;
 int Socket[2];
 //sock0:net to server  sock1:localhost
-struct sockaddr_in SendAddr[4];
-//0,1,2:to client; 3:to local
+struct sockaddr_in *SendAddr;
+//0,1,2,...LinkNum-1:to client; LinkNum:to local
 struct sockaddr_in RecvAddr[2];
 
 //void init_mutex();
+void init_memory();
 int init_sock_local(const char s_addr[], char s_port[]);
 
-int init_sock_s(int PortId, char s_port[]);
+int init_sock_s(int LinkID, char s_port[]);
 
 int SendToClient(int AddrId, char msg[], int len);
 
 int SendToLocal(char msg[], int len);
 
-int Recvfrom(int PortId, char msg[]);
+int Recvfrom(int LinkID, char msg[]);
 
 int UpdateAddr(struct sockaddr_in *AddrNow, struct sockaddr_in *NewAddr);
 
 void *ForwardUDP(void *v);
 
-void ChangeNet(int bestport);
+void ChangeNet(int LinkNow_c);
+
+
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -45,11 +49,13 @@ int main(int argc, char **argv) {
         exit(1);
     }
     printf("This is a UDP server, I will received message from client and reply with same message\n");
+    LinkNum = 3;
+    init_memory();
     init_sock_s(0, argv[1]);//init the Socket and addr
     init_sock_local("127.0.0.1", argv[2]);
     //printf("Socket init....finish\n");
     srand(time(NULL));
-    PortNow = 0;
+    LinkNow = 0;
     Maxtot = 0;
     pthread_t pt_f;
     pthread_create(&pt_f, NULL, ForwardUDP, NULL);
@@ -63,15 +69,15 @@ int main(int argc, char **argv) {
         if (FD_ISSET(Socket[0], &inputs)) {
             int msglen = Recvfrom(0, buff);
             printf("%s %u says: %s\n", inet_ntoa(RecvAddr[0].sin_addr), ntohs(RecvAddr[0].sin_port), buff);
-            int pi, PortNow_c;
+            int pi, LinkNow_c;
             pi = buff[0] - '0';
-            PortNow_c = buff[1] - '0';
-            if (pi < 0 || pi > 2 || PortNow_c < 0 || PortNow_c > 3) {
+            LinkNow_c = buff[1] - '0';
+            if (pi < 0 || pi > LinkNum-1 || LinkNow_c < 0 || LinkNow_c > LinkNum) {
                 printf("Invalid package.\n");
                 continue;
             }
             UpdateAddr(&SendAddr[pi], &RecvAddr[0]);//update destination address of this link
-            if (buff[1] == '3')// if the packet is a data packet, not a test packet.
+            if (buff[1] == '0' + LinkNum)// if the packet is a data packet, not a test packet.
             {
                 printf("!!receive UDP data packet from client!: \n");
                 SendToLocal(&buff[2], msglen - 2);
@@ -87,11 +93,10 @@ int main(int argc, char **argv) {
 
             long long tot;
             sscanf(&buff[2], "%lld", &tot);
-            //printf("%d : %d\n", tot, port);
             if (tot > Maxtot || (Maxtot - tot) > MAXMINUS) {
                 Maxtot = tot;
-                if (PortNow_c != PortNow) {
-                    ChangeNet(PortNow_c);
+                if (LinkNow_c != LinkNow) {
+                    ChangeNet(LinkNow_c);
                 }
             }
         }
@@ -99,9 +104,13 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void ChangeNet(int bestport) {
-    PortNow = bestport;
-    printf("!!!!!!!!!!!!!!!!!!!!!Control Port changed to port%d\n", PortNow);
+void init_memory()
+{
+    SendAddr = (struct sockaddr_in *)calloc(LinkNum + 1, sizeof(struct sockaddr_in));
+}
+void ChangeNet(int LinkNow_c) {
+    LinkNow = LinkNow_c;
+    printf("!!!!!!!!!!!!!!!!!!!!!Data Link changed to link%d\n", LinkNow);
 }
 
 void *ForwardUDP(void *v) {
@@ -115,10 +124,10 @@ void *ForwardUDP(void *v) {
         if (FD_ISSET(Socket[1], &inputs)) {
             int msglen = Recvfrom(1, &buff[1]);
             printf("!>>Get UDP from local port<<!\n");
-            buff[0] = '3';
+            buff[0] = '0' + LinkNum;
             //printf("%s\n", buff);
-            int PortNow_t = PortNow;
-            SendToClient(PortNow_t, buff, msglen + 1);
+            int LinkNow_t = LinkNow;
+            SendToClient(LinkNow_t, buff, msglen + 1);
         }
     }
     return 0;
@@ -129,10 +138,10 @@ int init_sock_local(const char s_addr[], char s_port[]) {
         perror("init_socket");
         exit(1);
     }
-    SendAddr[3].sin_family = AF_INET;
-    SendAddr[3].sin_port = htons(atoi(s_port));
-    SendAddr[3].sin_addr.s_addr = inet_addr(s_addr);
-    if (SendAddr[3].sin_addr.s_addr == INADDR_NONE) {
+    SendAddr[LinkNum].sin_family = AF_INET;
+    SendAddr[LinkNum].sin_port = htons(atoi(s_port));
+    SendAddr[LinkNum].sin_addr.s_addr = inet_addr(s_addr);
+    if (SendAddr[LinkNum].sin_addr.s_addr == INADDR_NONE) {
         printf("Incorrect ip address!\n");
         close(Socket[1]);
         exit(1);
@@ -140,9 +149,9 @@ int init_sock_local(const char s_addr[], char s_port[]) {
     return 0;
 }
 
-int init_sock_s(int PortId, char s_port[]) {
+int init_sock_s(int LinkID, char s_port[]) {
 
-    if ((Socket[PortId] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    if ((Socket[LinkID] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("init_socket");
         exit(1);
     }
@@ -151,7 +160,7 @@ int init_sock_s(int PortId, char s_port[]) {
     addr.sin_port = htons(atoi(s_port));
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(Socket[PortId], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (bind(Socket[LinkID], (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("init_socket_bind");
         exit(1);
     }
@@ -163,7 +172,7 @@ int SendToClient(int AddrId, char msg[], int len) {
     n = sendto(Socket[0], msg, len, 0, (struct sockaddr *) &(SendAddr[AddrId]), sizeof(SendAddr[AddrId]));
     if (n < 0) {
         perror("sendto");
-        //close(Socket[PortId]);
+        //close(Socket[LinkID]);
         /* print error but continue */
         return -1;
     }
@@ -172,21 +181,21 @@ int SendToClient(int AddrId, char msg[], int len) {
 
 int SendToLocal(char msg[], int len) {
     int n;
-    n = sendto(Socket[1], msg, len, 0, (struct sockaddr *) &(SendAddr[3]), sizeof(SendAddr[3]));
+    n = sendto(Socket[1], msg, len, 0, (struct sockaddr *) &(SendAddr[LinkNum]), sizeof(SendAddr[LinkNum]));
     if (n < 0) {
         perror("sendto");
-        //close(Socket[PortId]);
+        //close(Socket[LinkID]);
         /* print error but continue */
         return -1;
     }
     return 0;
 }
 
-int Recvfrom(int PortId, char msg[]) //recvfrom for client
+int Recvfrom(int LinkID, char msg[]) //recvfrom for client
 {
-    int addr_len = sizeof(RecvAddr[PortId]);
+    int addr_len = sizeof(RecvAddr[LinkID]);
     int n;
-    n = recvfrom(Socket[PortId], msg, BUFFLENGTH, MSG_DONTWAIT, (struct sockaddr *) &(RecvAddr[PortId]),
+    n = recvfrom(Socket[LinkID], msg, BUFFLENGTH, MSG_DONTWAIT, (struct sockaddr *) &(RecvAddr[LinkID]),
                  (socklen_t *) &addr_len);
     if (n > 0) {
         msg[n] = 0;
