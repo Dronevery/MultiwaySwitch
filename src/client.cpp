@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include "config.h"
 
 #define BUFFLENGTH 65536
 #define ARRLENGTH 10

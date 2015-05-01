@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 
+#include "config.h"
+
 #define BUFFLENGTH 65536
 #define MAXMINUS 1000
 
