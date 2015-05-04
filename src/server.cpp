@@ -14,17 +14,17 @@
 #define BUFFLENGTH 65536
 #define MAXMINUS 1000
 
-int LinkNum;
-int LinkNow;
+int totalLinkNum;
+int currLinkNow;
 long long Maxtot;
 int Socket[2];
 //sock0:net to server  sock1:localhost
 struct sockaddr_in *SendAddr;
-//0,1,2,...LinkNum-1:to client; LinkNum:to local
+//0,1,2,...linkNum-1:to client; linkNum:to local
 struct sockaddr_in RecvAddr[2];
 
-//void init_mutex();
-void init_memory();
+//void initMutex();
+void initMemory();
 int init_sock_local(const char s_addr[], int s_port);
 
 int init_sock_s(int LinkID, int s_port);
@@ -52,13 +52,13 @@ int main(int argc, char **argv) {
         config = loadServer("/etc/multiswitch/server.ini");
     } else config = loadServer(argv[1]);
     printf("This is a UDP server, I will received message from client and reply with same message\n");
-    LinkNum = config.linkCount;
-    init_memory();
+    totalLinkNum = config.linkCount;
+    initMemory();
     init_sock_s(0, config.receivePort);//init the Socket and addr
     init_sock_local("127.0.0.1", config.localForwardPort);
     //printf("Socket init....finish\n");
     //srand(time(NULL));
-    LinkNow = 0;
+    currLinkNow = 0;
     Maxtot = 0;
     pthread_t pt_f;
     pthread_create(&pt_f, NULL, ForwardUDP, NULL);
@@ -75,12 +75,12 @@ int main(int argc, char **argv) {
             int pi, LinkNow_c;
             pi = buff[0] - '0';
             LinkNow_c = buff[1] - '0';
-            if (pi < 0 || pi > LinkNum - 1 || LinkNow_c < 0 || LinkNow_c > LinkNum) {
+            if (pi < 0 || pi > totalLinkNum - 1 || LinkNow_c < 0 || LinkNow_c > totalLinkNum) {
                 printf("Invalid package.\n");
                 continue;
             }
             UpdateAddr(&SendAddr[pi], &RecvAddr[0]);//update destination address of this link
-            if (buff[1] == '0' + LinkNum)// if the packet is a data packet, not a test packet.
+            if (buff[1] == '0' + totalLinkNum)// if the packet is a data packet, not a test packet.
             {
                 printf("!!receive UDP data packet from client!: \n");
                 SendToLocal(&buff[2], msglen - 2);
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
             sscanf(&buff[2], "%lld", &tot);
             if (tot > Maxtot || (Maxtot - tot) > MAXMINUS) {
                 Maxtot = tot;
-                if (LinkNow_c != LinkNow) {
+                if (LinkNow_c != currLinkNow) {
                     ChangeNet(LinkNow_c);
                 }
             }
@@ -106,12 +106,12 @@ int main(int argc, char **argv) {
     }
 }
 
-void init_memory(){
-    SendAddr = (struct sockaddr_in *)calloc((size_t)LinkNum + 1, sizeof(struct sockaddr_in));
+void initMemory(){
+    SendAddr = (struct sockaddr_in *)calloc((size_t) totalLinkNum + 1, sizeof(struct sockaddr_in));
 }
 void ChangeNet(int LinkNow_c) {
-    LinkNow = LinkNow_c;
-    printf("!!!!!!!!!!!!!!!!!!!!!Data Link changed to link%d\n", LinkNow);
+    currLinkNow = LinkNow_c;
+    printf("!!!!!!!!!!!!!!!!!!!!!Data Link changed to link%d\n", currLinkNow);
 }
 
 void *ForwardUDP(void *v) {
@@ -125,9 +125,9 @@ void *ForwardUDP(void *v) {
         if (FD_ISSET(Socket[1], &inputs)) {
             int msglen = Recvfrom(1, &buff[1]);
             printf("!>>Get UDP from local port<<!\n");
-            buff[0] = '0' + LinkNum;
+            buff[0] = '0' + totalLinkNum;
             //printf("%s\n", buff);
-            int LinkNow_t = LinkNow;
+            int LinkNow_t = currLinkNow;
             SendToClient(LinkNow_t, buff, msglen + 1);
         }
     }
@@ -138,10 +138,10 @@ int init_sock_local(const char s_addr[], int s_port) {
         perror("init_socket");
         exit(1);
     }
-    SendAddr[LinkNum].sin_family = AF_INET;
-    SendAddr[LinkNum].sin_port = htons(s_port);
-    SendAddr[LinkNum].sin_addr.s_addr = inet_addr(s_addr);
-    if (SendAddr[LinkNum].sin_addr.s_addr == INADDR_NONE) {
+    SendAddr[totalLinkNum].sin_family = AF_INET;
+    SendAddr[totalLinkNum].sin_port = htons(s_port);
+    SendAddr[totalLinkNum].sin_addr.s_addr = inet_addr(s_addr);
+    if (SendAddr[totalLinkNum].sin_addr.s_addr == INADDR_NONE) {
         printf("Incorrect ip address!\n");
         close(Socket[1]);
         exit(1);
@@ -181,7 +181,7 @@ int SendToClient(int AddrId, char msg[], int len) {
 
 int SendToLocal(char msg[], int len) {
     int n;
-    n = sendto(Socket[1], msg, len, 0, (struct sockaddr *) &(SendAddr[LinkNum]), sizeof(SendAddr[LinkNum]));
+    n = sendto(Socket[1], msg, len, 0, (struct sockaddr *) &(SendAddr[totalLinkNum]), sizeof(SendAddr[totalLinkNum]));
     if (n < 0) {
         perror("sendto");
         //close(Socket[LinkID]);
